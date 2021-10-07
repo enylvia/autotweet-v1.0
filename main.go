@@ -11,6 +11,7 @@ import (
 
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
+	"github.com/fatih/color"
 )
 
 type Token struct {
@@ -36,9 +37,7 @@ func main() {
 		log.Println("Account not found")
 		log.Println(err)
 	}
-	//CHANGE THIS IF YOU HAVE YOUR OWN DB OR TXT FILE
 	file, err := os.Open("db/tweet.txt")
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,17 +51,25 @@ func main() {
 		}
 		var status = resp.StatusCode
 		var text = tweet.Text
-		log.Println("Status Code : ", status)
-		log.Println("Tweet : ", text)
+		d := color.New(color.FgRed)
+		g := color.New(color.FgGreen)
+		if status == 403 {
+			d.Println("Error Code : ", status)
+		} else {
 
-		//CRON JOB CHANGE A VALUE TO SET UR TIMER
-		time.Sleep(time.Minute * 1)
+			g.Println("Success Code : ", status)
+		}
 
+		g.Println("Tweet : ", text)
+		delayTime := 3600
+
+		d.Println("Delay Time : ", time.Duration(delayTime)*time.Second)
+
+		time.Sleep(30 * time.Minute)
 	}
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func getClient(tkn *Token) (*twitter.Client, error) {
