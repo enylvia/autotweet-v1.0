@@ -8,14 +8,10 @@ type Token struct {
 }
 
 type ResponseTweet struct {
-	Status string `json:"status"`
-	Acak   struct {
-		Id RandomAyat `json:"id"`
-	} `json:"acak"`
+	Status bool         `json:"status"`
+	Data   []RandomAyat `json:"data"`
 }
 type RandomAyat struct {
-	Id    string `json:"id"`
-	Surat string `json:"surat"`
-	Ayat  string `json:"ayat"`
-	Teks  string `json:"teks"`
+	AyaName string `json:"aya_name"`
+	Text    string `json:"text"`
 }

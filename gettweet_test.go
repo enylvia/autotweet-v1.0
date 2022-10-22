@@ -1,22 +1,32 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/rivo/uniseg"
+	"log"
+	"net/http"
+	"strconv"
 	"testing"
 )
 
 func TestGetTweet(t *testing.T) {
 	// Test Get Tweet
-	data, err := GetTweet()
+	var response ResponseTweet
+	random := 1
+	resp, _ := http.Get("https://api.myquran.com/v1/tafsir/quran/kemenag/id/" + strconv.Itoa(random))
+	//limit character
+	defer resp.Body.Close()
+	// Decode data from API
+	err := json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		t.Error("Error Get Tweet")
+		t.Error(err)
 	}
-	count := uniseg.GraphemeClusterCount(data.Acak.Id.Teks)
-	if count > 260 {
-		GetTweet()
+	text := response.Data[0].AyaName + " - " + response.Data[0].Text
+	count := uniseg.GraphemeClusterCount(text)
+	if count > 275 {
+		text = LimitCharacter(response.Data[0].AyaName+" - "+response.Data[0].Text, 270)
 	}
-	if count < 260 {
-		t.Log("Success Get Tweet")
-	}
+	log.Println(count)
+	log.Println(text)
 
 }

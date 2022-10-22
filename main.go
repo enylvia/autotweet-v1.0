@@ -6,11 +6,15 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/go-co-op/gocron"
+	"github.com/joho/godotenv"
 	"github.com/rivo/uniseg"
+	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,10 +23,10 @@ var s = gocron.NewScheduler(time.UTC)
 
 func main() {
 	// Load .env file
-	//err := godotenv.Load(".env")
-	//if err != nil {
-	//	log.Fatal("Error loading .env file")
-	//}
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	fmt.Println("Auto Tweet From API V1.0")
 	fmt.Println("=======================================")
 	// Get Token From .env
@@ -37,9 +41,9 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	// Welcome endpoint
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Hello your App is running")
+	// Welcome endpoint and ping to keep the app awake
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Fprintf(writer, "Hello your APP is running")
 	})
 	// Endpoint for start cron job
 	http.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
@@ -66,9 +70,15 @@ func StopCronJob() {
 func RunCronJob(client *twitter.Client) {
 	// Start cron job to send tweet every 1 hour
 	s.Every(1).Hour().Do(SendTweet, client)
+	s.Every(25).Minute().Do(Ping)
 	// Start cron job
 	s.StartAsync()
 	fmt.Println("Cron job started, currently running jobs: ", len(s.Jobs()))
+}
+
+func Ping() {
+	// Ping to keep the app awake
+	http.Get("https://autotweets.herokuapp.com/")
 }
 
 func SendTweet(client *twitter.Client) {
@@ -78,11 +88,11 @@ func SendTweet(client *twitter.Client) {
 		log.Println(err)
 	}
 	// Format text that we want to send
-	formatString := fmt.Sprintf(tweet.Acak.Id.Teks+"(QS:%s: %s)", tweet.Acak.Id.Surat, tweet.Acak.Id.Ayat)
-	// Check if the text is more than 270 characters
+	formatString := fmt.Sprintf(tweet.Data[0].AyaName + " - " + tweet.Data[0].Text)
+	// Limit character
 	count := uniseg.GraphemeClusterCount(formatString)
-	if count > 270 {
-		fmt.Println("Tweet is too long, skipping...")
+	if count > 275 {
+		formatString = LimitCharacter(formatString, 275)
 	}
 	// Send tweet to Twitter
 	send, resp, err := client.Statuses.Update(formatString, nil)
@@ -94,8 +104,13 @@ func SendTweet(client *twitter.Client) {
 }
 func GetTweet() (ResponseTweet, error) {
 	// Get Data From API
+	min := 1
+	max := 6236
+	// Get random number
+	rand.Seed(time.Now().UnixNano())
+	random := rand.Intn(max-min) + min
 	var data ResponseTweet
-	resp, err := http.Get("https://api.banghasan.com/quran/format/json/acak")
+	resp, err := http.Get("https://api.myquran.com/v1/tafsir/quran/kemenag/id/" + strconv.Itoa(random))
 	if err != nil {
 		return ResponseTweet{}, err
 	}
@@ -140,4 +155,20 @@ func getClient(tkn *Token) (*twitter.Client, error) {
 	fmt.Println("Follower : ", user.FollowersCount)
 	fmt.Println("=======================================")
 	return client, nil
+}
+
+func LimitCharacter(word string, limit int) string {
+	// Limit Character
+	reader := strings.NewReader(word)
+
+	// Get the first 270 characters
+	buff := make([]byte, limit)
+
+	n, _ := io.ReadAtLeast(reader, buff, limit)
+
+	if n != 0 {
+		return string(buff) + "..."
+	} else {
+		return word
+	}
 }
