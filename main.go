@@ -38,6 +38,10 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
+	// Welcome endpoint
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Hello your App is running")
+	})
 	// Endpoint for start cron job
 	http.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
 		RunCronJob(client)
