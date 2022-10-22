@@ -87,7 +87,7 @@ func SendTweet(client *twitter.Client) {
 		log.Println(err)
 	}
 	// Format text that we want to send
-	formatString := fmt.Sprintf(tweet.Data[0].AyaName + " - " + tweet.Data[0].Text)
+	formatString := fmt.Sprintf(strconv.Itoa(tweet.Data[0].NoSurah) + ":" + strconv.Itoa(tweet.Data[0].NoAyat) + " - " + tweet.Data[0].TeksTerjemah)
 	// Limit character
 	count := uniseg.GraphemeClusterCount(formatString)
 	if count > 275 {
@@ -103,13 +103,12 @@ func SendTweet(client *twitter.Client) {
 }
 func GetTweet() (ResponseTweet, error) {
 	// Get Data From API
-	min := 1
-	max := 6236
-	// Get random number
-	rand.Seed(time.Now().UnixNano())
-	random := rand.Intn(max-min) + min
+	surah := RandomNumberGiven(1, 77)
+	aya := RandomNumberGiven(1, 11)
+
 	var data ResponseTweet
-	resp, err := http.Get("https://api.myquran.com/v1/tafsir/quran/kemenag/id/" + strconv.Itoa(random))
+	formatUrl := fmt.Sprintf("https://quran.kemenag.go.id/api/v1/ayatweb/%d/%d/%d/%d", surah, aya, 0, 6236)
+	resp, err := http.Get(formatUrl)
 	if err != nil {
 		return ResponseTweet{}, err
 	}
@@ -170,4 +169,10 @@ func LimitCharacter(word string, limit int) string {
 	} else {
 		return word
 	}
+}
+
+func RandomNumberGiven(min, max int) int {
+	// Get random number
+	rand.Seed(time.Now().UnixNano())
+	return rand.Intn(max-min) + min
 }

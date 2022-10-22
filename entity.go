@@ -12,6 +12,7 @@ type ResponseTweet struct {
 	Data   []RandomAyat `json:"data"`
 }
 type RandomAyat struct {
-	AyaName string `json:"aya_name"`
-	Text    string `json:"text"`
+	NoSurah      int    `json:"no_surah"`
+	NoAyat       int    `json:"no_ayat"`
+	TeksTerjemah string `json:"teks_terjemah"`
 }
