@@ -50,7 +50,11 @@ func main() {
 		StopCronJob()
 	})
 	// Run server from port 8080
-	http.ListenAndServe(":8080", nil)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	http.ListenAndServe(":"+port, nil)
 
 }
 func StopCronJob() {
