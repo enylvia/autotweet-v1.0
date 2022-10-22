@@ -1,97 +1,136 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
+	"github.com/dghubble/go-twitter/twitter"
+	"github.com/dghubble/oauth1"
+	"github.com/go-co-op/gocron"
+	"github.com/joho/godotenv"
+	"github.com/rivo/uniseg"
 	"log"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/dghubble/go-twitter/twitter"
-	"github.com/dghubble/oauth1"
-	"github.com/fatih/color"
 )
 
-type Token struct {
-	ConsumerKey    string
-	ConsumerSecret string
-	ApiKey         string
-	ApiSecret      string
-}
+var s = gocron.NewScheduler(time.UTC)
 
 func main() {
-
-	fmt.Println("Auto Tweet V1.0")
-	fmt.Println("=======================================")
-	token := Token{
-		ConsumerKey:    "YOUR_CONSUMER_KEY",
-		ConsumerSecret: "YOUR_CONSUMER_SECRET",
-		ApiKey:         "YOUR_API_KEY",
-		ApiSecret:      "YOUR_API_SECRET",
-	}
-	client, err := getClient(&token)
-
+	// Load .env file
+	err := godotenv.Load(".env")
 	if err != nil {
-		log.Println("Account not found")
+		log.Fatal("Error loading .env file")
+	}
+	fmt.Println("Auto Tweet From API V1.0")
+	fmt.Println("=======================================")
+	// Get Token From .env
+	token := Token{
+		ConsumerKey:    os.Getenv("CONSUMER_KEY"),
+		ConsumerSecret: os.Getenv("CONSUMER_SECRET"),
+		ApiKey:         os.Getenv("API_KEY"),
+		ApiSecret:      os.Getenv("API_SECRET"),
+	}
+	// Login to Twitter using the credentials
+	client, err := getClient(&token)
+	if err != nil {
 		log.Println(err)
 	}
-	file, err := os.Open("db/tweet.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+	// Endpoint for start cron job
+	http.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
+		RunCronJob(client)
+	})
+	// Endpoint for stop cron job
+	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
+		StopCronJob()
+	})
+	// Run server from port 8080
+	http.ListenAndServe(":8080", nil)
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		tweet, resp, err := client.Statuses.Update(scanner.Text(), nil)
-		if err != nil {
-			log.Println(err)
-		}
-		var status = resp.StatusCode
-		var text = tweet.Text
-		d := color.New(color.FgRed)
-		g := color.New(color.FgGreen)
-		if status == 403 {
-			d.Println("Error Code : ", status)
-		} else {
-
-			g.Println("Success Code : ", status)
-		}
-
-		g.Println("Tweet : ", text)
-		delayTime := 3600
-
-		d.Println("Delay Time : ", time.Duration(delayTime)*time.Second)
-
-		time.Sleep(30 * time.Minute)
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+}
+func StopCronJob() {
+	// Stop cron job
+	// Clear all scheduler jobs
+	s.Clear()
+	fmt.Println("Jobs cleared, currently running jobs: ", len(s.Jobs()))
+}
+func RunCronJob(client *twitter.Client) {
+	// Start cron job to send tweet every 1 hour
+	s.Every(1).Hour().Do(SendTweet, client)
+	// Start cron job
+	s.StartAsync()
+	fmt.Println("Cron job started, currently running jobs: ", len(s.Jobs()))
 }
 
+func SendTweet(client *twitter.Client) {
+	// Get Tweet data from function GetTweet
+	tweet, err := GetTweet()
+	if err != nil {
+		log.Println(err)
+	}
+	// Format text that we want to send
+	formatString := fmt.Sprintf(tweet.Acak.Id.Teks+"(QS:%s: %s)", tweet.Acak.Id.Surat, tweet.Acak.Id.Ayat)
+	// Check if the text is more than 270 characters
+	count := uniseg.GraphemeClusterCount(formatString)
+	if count > 270 {
+		fmt.Println("Tweet is too long, skipping...")
+	}
+	// Send tweet to Twitter
+	send, resp, err := client.Statuses.Update(formatString, nil)
+	if err != nil {
+		log.Println(err)
+	}
+	// Check if the tweet is sent successfully
+	fmt.Printf("TWEETED: %+v , %v\n", send.Text, resp.Status)
+}
+func GetTweet() (ResponseTweet, error) {
+	// Get Data From API
+	var data ResponseTweet
+	resp, err := http.Get("https://api.banghasan.com/quran/format/json/acak")
+	if err != nil {
+		return ResponseTweet{}, err
+	}
+	defer resp.Body.Close()
+	// Decode data from API
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		return ResponseTweet{}, err
+	}
+	return data, nil
+}
+
+// Get Client Twitter
 func getClient(tkn *Token) (*twitter.Client, error) {
+	// Get Token From .env file
 	config := oauth1.NewConfig(tkn.ConsumerKey, tkn.ConsumerSecret)
 	tokenapi := oauth1.NewToken(tkn.ApiKey, tkn.ApiSecret)
-
+	// Get Client Twitter
 	httpClient := config.Client(oauth1.NoContext, tokenapi)
 	client := twitter.NewClient(httpClient)
 
+	// Check if the client is valid
 	verifcek := &twitter.AccountVerifyParams{
 		SkipStatus:   twitter.Bool(true),
 		IncludeEmail: twitter.Bool(true),
 	}
+
+	// Get user information from Twitter
 	user, _, err := client.Accounts.VerifyCredentials(verifcek)
 
 	if err != nil {
 		return nil, err
 	}
+	// Print user information
 	var regex, _ = regexp.Compile(`[a-z]+`)
-	var info = regex.FindAllString(user.Name, -1)
-	data := strings.Join(info, " ")
-	fmt.Println("Account name : ", data)
 
+	// Get username from Twitter
+	var info = regex.FindAllString(user.ScreenName, -1)
+	data := strings.Join(info, " ")
+	fmt.Println("Username : @" + data)
+	fmt.Println("Current Tweet : ", user.StatusesCount)
+	fmt.Println("Follower : ", user.FollowersCount)
+	fmt.Println("=======================================")
 	return client, nil
 }
