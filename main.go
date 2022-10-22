@@ -6,7 +6,6 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/go-co-op/gocron"
-	"github.com/joho/godotenv"
 	"github.com/rivo/uniseg"
 	"io"
 	"log"
@@ -23,10 +22,10 @@ var s = gocron.NewScheduler(time.UTC)
 
 func main() {
 	// Load .env file
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	//err := godotenv.Load(".env")
+	//if err != nil {
+	//	log.Fatal("Error loading .env file")
+	//}
 	fmt.Println("Auto Tweet From API V1.0")
 	fmt.Println("=======================================")
 	// Get Token From .env
