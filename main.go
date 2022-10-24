@@ -86,6 +86,9 @@ func SendTweet(client *twitter.Client) {
 	if err != nil {
 		log.Println(err)
 	}
+	if tweet.Data == nil {
+		log.Println("Tidak ada data untuk surah dan ayat ini")
+	}
 	// Format text that we want to send
 	formatString := fmt.Sprintf(strconv.Itoa(tweet.Data[0].NoSurah) + ":" + strconv.Itoa(tweet.Data[0].NoAyat) + " - " + tweet.Data[0].TeksTerjemah)
 	// Limit character
@@ -103,8 +106,8 @@ func SendTweet(client *twitter.Client) {
 }
 func GetTweet() (ResponseTweet, error) {
 	// Get Data From API
-	surah := RandomNumberGiven(1, 77)
-	aya := RandomNumberGiven(1, 11)
+	surah := RandomNumberGiven(1, 114)
+	aya := RandomNumberGiven(1, 70)
 
 	var data ResponseTweet
 	formatUrl := fmt.Sprintf("https://quran.kemenag.go.id/api/v1/ayatweb/%d/%d/%d/%d", surah, aya, 0, 6236)
