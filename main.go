@@ -88,6 +88,7 @@ func SendTweet(client *twitter.Client) {
 	}
 	if len(tweet.Data) == 0 {
 		log.Println("Tidak ada data untuk surah dan ayat ini")
+		return
 	}
 	// Format text that we want to send
 	formatString := fmt.Sprintf(strconv.Itoa(tweet.Data[0].NoSurah) + ":" + strconv.Itoa(tweet.Data[0].NoAyat) + " - " + tweet.Data[0].TeksTerjemah)
