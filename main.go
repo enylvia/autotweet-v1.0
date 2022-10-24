@@ -86,7 +86,7 @@ func SendTweet(client *twitter.Client) {
 	if err != nil {
 		log.Println(err)
 	}
-	if tweet.Data == nil {
+	if len(tweet.Data) == 0 {
 		log.Println("Tidak ada data untuk surah dan ayat ini")
 	}
 	// Format text that we want to send
